@@ -3,637 +3,600 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Uberpaket Cashless Recorder</title>
+    <title>Aplikasi Absensi Geo</title>
+    
+    <!-- React & ReactDOM -->
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    
+    <!-- Babel for JSX -->
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    
+    <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="https://unpkg.com/lucide@latest"></script>
-    <!-- Pustaka Grafik -->
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+	<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
-        body { font-family: 'Plus Jakarta Sans', sans-serif; }
-        .tab-active { color: #2563eb; background-color: #eff6ff; }
-        .loader { border-top-color: #2563eb; animation: spinner 1.5s linear infinite; }
-        @keyframes spinner { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-        .modal-enter { animation: modal-bg-fade 0.3s ease-out; }
-        .modal-content-enter { animation: modal-content-pop 0.3s cubic-bezier(0.34, 1.56, 0.64, 1); }
-        @keyframes modal-bg-fade { from { opacity: 0; } to { opacity: 1; } }
-        @keyframes modal-content-pop { from { transform: scale(0.9); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+        /* Custom Scrollbar for better UI */
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-track { background: #f1f1f1; }
+        ::-webkit-scrollbar-thumb { background: #ccc; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #bbb; }
     </style>
 </head>
-<body class="bg-[#F8FAFC] min-h-screen">
+<body class="bg-gray-50 text-gray-800 font-sans">
+    <div id="root"></div>
 
-    <nav class="bg-white border-b border-gray-100 sticky top-0 z-50">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div class="flex justify-between h-16 items-center">
-                <div class="flex items-center gap-2">
-                    <div class="bg-blue-600 p-2 rounded-lg text-white">
-                        <i data-lucide="package" class="w-6 h-6"></i>
-                    </div>
-                    <span class="text-xl font-bold text-gray-800">Uberpaket<span class="text-blue-600">Cashless</span></span>
-                </div>
-                <div id="nav-actions"></div>
-            </div>
-        </div>
-    </nav>
+    <script type="text/babel">
+        const { useState, useEffect, useMemo } = React;
+		// --- 1. INISIALISASI SUPABASE (BARU) ---
+        const supabaseUrl = 'https://lioxhmqkkichbdwdelxg.supabase.co'; // Ganti ini
+        const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imxpb3hobXFra2ljaGJkd2RlbHhnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjkwNzcxMTcsImV4cCI6MjA4NDY1MzExN30.0L0IctUNdnjQvvKcQ57TsES2_zAEZtaXbm4SpkUUmg0';      // Ganti ini
+        const supabase = supabase.createClient(supabaseUrl, supabaseKey);
 
-    <main id="app-content" class="pb-20"></main>
+        // --- ICONS (Inline SVGs to replace Lucide dependency) ---
+        const IconMapPin = ({className}) => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg>;
+        const IconUsers = ({className}) => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>;
+        const IconSettings = ({className}) => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.1a2 2 0 0 1-1-1.72v-.51a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>;
+        const IconFileText = ({className}) => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M10 9H8"/><path d="M16 13H8"/><path d="M16 17H8"/></svg>;
+        const IconLock = ({className}) => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>;
+        const IconLogOut = ({className}) => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" x2="9" y1="12" y2="12"/></svg>;
+        const IconClock = ({className}) => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>;
+        const IconAlertTriangle = ({className}) => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><line x1="12" x2="12" y1="9" y2="13"/><line x1="12" x2="12.01" y1="17" y2="17"/></svg>;
+        const IconCheckCircle = ({className}) => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>;
+        const IconDownload = ({className}) => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/></svg>;
+        const IconPlus = ({className}) => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M5 12h14"/><path d="M12 5v14"/></svg>;
+        const IconTrash2 = ({className}) => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/><line x1="10" x2="10" y1="11" y2="17"/><line x1="14" x2="14" y1="11" y2="17"/></svg>;
+        const IconEdit2 = ({className}) => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/></svg>;
+        const IconX = ({className}) => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>;
 
-    <footer class="py-12 border-t border-gray-100 text-center text-gray-400 text-xs">
-        <p>© 2024 Uberpaket Cashless Rekap System • Powered by Supabase</p>
-    </footer>
-
-    <!-- Overlay Loader -->
-    <div id="global-loader" class="fixed inset-0 bg-white/80 z-[100] flex flex-col items-center justify-center hidden">
-        <div class="loader ease-linear rounded-full border-4 border-t-4 border-gray-200 h-12 w-12 mb-4"></div>
-        <p class="text-blue-600 font-bold" id="loader-text">Memproses...</p>
-    </div>
-
-    <!-- Modal Pesan/Alert Kustom -->
-    <div id="msg-modal" class="fixed inset-0 bg-black/50 z-[120] flex items-center justify-center hidden modal-enter">
-        <div class="bg-white p-8 rounded-3xl shadow-2xl w-full max-w-xs text-center border modal-content-enter">
-            <div id="msg-icon-area" class="w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-4"></div>
-            <h3 id="msg-title" class="font-bold text-gray-800 mb-2">Pesan</h3>
-            <p id="msg-text" class="text-sm text-gray-500 mb-6"></p>
-            <button onclick="closeMsgModal()" class="w-full py-3 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl font-bold transition-colors">Tutup</button>
-        </div>
-    </div>
-
-    <!-- Modal PIN Owner -->
-    <div id="pin-modal" class="fixed inset-0 bg-black/50 z-[110] flex items-center justify-center hidden modal-enter">
-        <div class="bg-white p-8 rounded-3xl shadow-2xl w-full max-w-xs text-center border modal-content-enter">
-            <i data-lucide="key-round" class="text-amber-600 w-10 h-10 mx-auto mb-4"></i>
-            <h3 class="font-bold text-gray-800 mb-2">PIN Owner Dibutuhkan</h3>
-            <input type="password" id="pin-input" maxlength="6" placeholder="••••••" class="w-full text-center text-2xl font-bold p-3 border rounded-xl mb-4 bg-gray-50 focus:ring-2 focus:ring-blue-500 outline-none">
-            <div class="flex gap-2">
-                <button onclick="togglePinModal(false)" class="flex-1 py-2 text-gray-500 font-bold">Batal</button>
-                <button onclick="verifyOwnerPin()" class="flex-1 py-2 bg-blue-600 text-white rounded-xl font-bold">Buka</button>
-            </div>
-        </div>
-    </div>
-
-    <!-- Modal Konfirmasi Hapus -->
-    <div id="confirm-modal" class="fixed inset-0 bg-black/50 z-[110] flex items-center justify-center hidden modal-enter">
-        <div class="bg-white p-8 rounded-3xl shadow-2xl w-full max-w-sm text-center border modal-content-enter">
-            <div class="bg-red-50 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-6">
-                <i data-lucide="trash-2" class="text-red-600 w-8 h-8"></i>
-            </div>
-            <h3 id="confirm-title" class="font-black text-gray-900 text-xl mb-2">Konfirmasi Hapus</h3>
-            <p id="confirm-text" class="text-sm text-gray-500 mb-8 px-4"></p>
-            <div class="flex gap-3">
-                <button onclick="toggleConfirmModal(false)" class="flex-1 py-3 text-gray-500 font-bold hover:bg-gray-50 rounded-xl transition-colors">Batal</button>
-                <button id="confirm-execute-btn" class="flex-1 py-3 bg-red-600 text-white rounded-xl font-bold shadow-lg shadow-red-100 hover:bg-red-700 transition-all">Ya, Hapus</button>
-            </div>
-        </div>
-    </div>
-
-    <!-- Modal Reset Data -->
-    <div id="reset-modal" class="fixed inset-0 bg-black/50 z-[110] flex items-center justify-center hidden modal-enter">
-        <div class="bg-white p-8 rounded-3xl shadow-2xl w-full max-w-sm text-center border modal-content-enter">
-            <div class="bg-red-50 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-6">
-                <i data-lucide="alert-triangle" class="text-red-600 w-8 h-8"></i>
-            </div>
-            <h3 class="font-black text-gray-900 text-xl mb-2">Hapus Seluruh Data?</h3>
-            <p class="text-sm text-gray-500 mb-6 text-center leading-relaxed">Tindakan ini akan menghapus <b>seluruh rekaman pengiriman</b> di bank data secara permanen. Ketik <span class="text-red-600 font-black">reset</span> di bawah untuk melanjutkan.</p>
-            <input type="text" id="reset-confirm-input" placeholder="Ketik 'reset' di sini" class="w-full text-center p-4 border-2 border-gray-100 rounded-2xl mb-6 focus:border-red-500 outline-none font-bold">
-            <div class="flex gap-3">
-                <button onclick="toggleResetModal(false)" class="flex-1 py-3 text-gray-500 font-bold hover:bg-gray-50 rounded-xl transition-colors">Batal</button>
-                <button onclick="executeFullReset()" class="flex-1 py-3 bg-red-600 text-white rounded-xl font-bold shadow-lg shadow-red-100 hover:bg-red-700 transition-all">Hapus Semua</button>
-            </div>
-        </div>
-    </div>
-
-    <script>
-        const SUPABASE_URL = "https://cdvpmtnjkqjzruffsoyz.supabase.co";
-        const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNkdnBtdG5qa3FqenJ1ZmZzb3l6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjkzNDI1MDYsImV4cCI6MjA4NDkxODUwNn0.tDa9YhKMpV7wzBiOjdjgHiWii59UTZHW2Chb9O6JKwU";
-        const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-
-        let state = {
-            view: 'login',
-            user: null,
-            shipments: [],
-            settings: [],
-            showCommission: false,
-            dateRange: {
-                start: new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().split('T')[0],
-                end: new Date().toISOString().split('T')[0]
-            },
-            inputRows: [{ expedition: '', count: '' }],
-            charts: { line: null, pie: null }
+        // --- UTILS & CONSTANTS ---
+        const DEFAULT_OFFICE = {
+            lat: -6.9110265,
+            lng: 107.7041281,
+            radius: 50, // meters
+            name: "Kantor Pusat"
         };
 
-        const OWNER_PIN = "131313";
+        const DEFAULT_PIN = "123456";
 
-        window.addEventListener('load', async () => {
-            lucide.createIcons();
-            await checkAuth();
-            await loadData();
-            showView(state.user ? 'dashboard' : 'login');
-        });
-
-        async function checkAuth() {
-            const { data: { session } } = await supabaseClient.auth.getSession();
-            state.user = session?.user || null;
-            updateNavbar();
-        }
-
-        async function loadData() {
-            const { data: shipData } = await supabaseClient.from('shipments').select('*').order('tanggal', { ascending: false });
-            const { data: settingsData } = await supabaseClient.from('settings').select('*');
-            if (shipData) state.shipments = shipData;
-            if (settingsData) state.settings = settingsData;
-            
-            if (state.view === 'dashboard') renderDashboard();
-            if (state.view === 'settings') renderSettings();
-            if (state.view === 'analytics') renderAnalytics();
-        }
-
-        function showView(viewName) {
-            state.view = viewName;
-            const content = document.getElementById('app-content');
-            updateNavbar();
-
-            if (viewName === 'login') {
-                content.innerHTML = renderLogin();
-            } else if (viewName === 'dashboard') {
-                renderDashboard();
-            } else if (viewName === 'settings') {
-                renderSettings();
-            } else if (viewName === 'analytics') {
-                renderAnalytics();
+        // Wrapper aman untuk localStorage
+        const safeStorage = {
+            getItem: (key) => {
+                try {
+                return localStorage.getItem(key);
+                } catch (e) {
+                console.warn(`Gagal membaca ${key} dari localStorage`, e);
+                return null;
+                }
+            },
+            setItem: (key, value) => {
+                try {
+                localStorage.setItem(key, value);
+                } catch (e) {
+                console.warn(`Gagal menyimpan ${key} ke localStorage`, e);
+                }
             }
-            lucide.createIcons();
-        }
+        };
 
-        function updateNavbar() {
-            const nav = document.getElementById('nav-actions');
-            if (!state.user) {
-                nav.innerHTML = '';
-            } else {
-                nav.innerHTML = `
-                    <div class="flex items-center gap-2">
-                        <button onclick="showView('dashboard')" title="Dashboard" class="p-2 rounded-lg ${state.view === 'dashboard' ? 'tab-active' : 'text-gray-500 hover:bg-gray-50'}"><i data-lucide="layout-dashboard"></i></button>
-                        <button onclick="showView('analytics')" title="Analisa Statistik" class="p-2 rounded-lg ${state.view === 'analytics' ? 'tab-active' : 'text-gray-500 hover:bg-gray-50'}"><i data-lucide="bar-chart-3"></i></button>
-                        <button onclick="showView('settings')" title="Pengaturan" class="p-2 rounded-lg ${state.view === 'settings' ? 'tab-active' : 'text-gray-500 hover:bg-gray-50'}"><i data-lucide="settings"></i></button>
-                        <button onclick="handleLogout()" title="Keluar" class="p-2 text-red-500 hover:bg-red-50 rounded-lg"><i data-lucide="log-out"></i></button>
-                    </div>
-                `;
-            }
-            lucide.createIcons();
-        }
+        const calculateDistance = (lat1, lon1, lat2, lon2) => {
+            if (!lat1 || !lon1 || !lat2 || !lon2) return 0;
+            const R = 6371e3; // metres
+            const φ1 = lat1 * Math.PI / 180;
+            const φ2 = lat2 * Math.PI / 180;
+            const Δφ = (lat2 - lat1) * Math.PI / 180;
+            const Δλ = (lon2 - lon1) * Math.PI / 180;
+            const a = Math.sin(Δφ / 2) * Math.sin(Δφ / 2) + Math.cos(φ1) * Math.cos(φ2) * Math.sin(Δλ / 2) * Math.sin(Δλ / 2);
+            const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+            return R * c;
+        };
 
-        function renderLogin() {
-            return `
-                <div class="max-w-md mx-auto px-4 py-20 text-center">
-                    <div class="bg-white p-10 rounded-[2.5rem] shadow-2xl border border-gray-100">
-                        <div class="bg-blue-600 w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-lg shadow-blue-200">
-                            <i data-lucide="shield-check" class="text-white w-8 h-8"></i>
-                        </div>
-                        <h2 class="text-3xl font-bold text-gray-900 mb-8">Admin Login</h2>
-                        <input type="email" id="login-email" placeholder="Email" class="w-full p-4 border rounded-2xl mb-4 focus:ring-2 focus:ring-blue-500 outline-none">
-                        <input type="password" id="login-password" placeholder="Password" class="w-full p-4 border rounded-2xl mb-6 focus:ring-2 focus:ring-blue-500 outline-none">
-                        <button onclick="handleLogin()" class="w-full bg-blue-600 text-white py-4 rounded-2xl font-bold shadow-xl shadow-blue-100 transition-all active:scale-95">Masuk Dashboard</button>
-                    </div>
-                </div>
-            `;
-        }
+        const formatCurrency = (amount) => new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(amount);
+        
+        const formatDate = (dateString) => {
+            if (!dateString) return '-';
+            return new Date(dateString).toLocaleDateString('id-ID', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+        };
 
-        function renderDashboard() {
-            const filtered = state.shipments.filter(s => s.tanggal >= state.dateRange.start && s.tanggal <= state.dateRange.end);
-            const totalShipments = filtered.reduce((acc, curr) => acc + (Number(curr.poin) || 0), 0);
-            const totalCommission = filtered.reduce((acc, curr) => acc + (Number(curr.komisi) || 0), 0);
+        const formatTime = (dateString) => {
+            if (!dateString) return '--:--';
+            return new Date(dateString).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
+        };
 
-            const content = document.getElementById('app-content');
-            content.innerHTML = `
-                <div class="max-w-7xl mx-auto px-4 py-8 space-y-8 animate-in fade-in duration-500">
-                    <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-                        <h1 class="text-3xl font-extrabold text-gray-900 tracking-tight">Dashboard Admin</h1>
-                        <div class="bg-white p-2 rounded-2xl border shadow-sm flex items-center gap-2">
-                             <input type="date" id="input-date" value="${new Date().toISOString().split('T')[0]}" class="px-4 py-2 bg-gray-50 rounded-xl font-bold text-gray-700 outline-none">
-                        </div>
-                    </div>
+        // --- MAIN COMPONENT ---
+        function App() {
+            const [view, setView] = useState('home');
+            const [userLocation, setUserLocation] = useState(null);
+            const [distance, setDistance] = useState(null);
+            const [errorMsg, setErrorMsg] = useState('');
+            const [currentTime, setCurrentTime] = useState(new Date());
 
-                    <div class="bg-white p-8 rounded-[2.5rem] shadow-sm border border-gray-100">
-                        <div class="flex justify-between items-center mb-6">
-                            <h3 class="font-black text-gray-800 text-lg flex items-center gap-2"><i data-lucide="plus-circle" class="text-blue-600"></i> Input Data Pengiriman</h3>
-                            <button onclick="addInputRow()" class="text-blue-600 font-bold flex items-center gap-1 text-sm hover:underline"><i data-lucide="plus" class="w-4 h-4"></i> Tambah Baris</button>
-                        </div>
-                        <div class="overflow-x-auto mb-6">
-                            <table class="w-full text-left border-collapse">
-                                <thead class="text-[10px] font-black uppercase text-gray-400 tracking-widest border-b">
-                                    <tr>
-                                        <th class="py-3 px-2">Nama Ekspedisi</th>
-                                        <th class="py-3 px-2">Jumlah Paket</th>
-                                        <th class="py-3 px-2 text-right">Aksi</th>
-                                    </tr>
-                                </thead>
-                                <tbody id="input-table-body" class="divide-y">
-                                    ${state.inputRows.map((row, index) => `
-                                        <tr>
-                                            <td class="py-4 px-2">
-                                                <select onchange="updateInputRow(${index}, 'expedition', this.value)" class="w-full p-3 bg-gray-50 rounded-xl border-none font-bold text-gray-700 focus:ring-2 focus:ring-blue-500 outline-none">
-                                                    <option value="">Pilih Ekspedisi...</option>
-                                                    ${state.settings.map(s => `<option value="${s.name}" ${row.expedition === s.name ? 'selected' : ''}>${s.name.toUpperCase()}</option>`).join('')}
-                                                </select>
-                                            </td>
-                                            <td class="py-4 px-2">
-                                                <input type="number" value="${row.count}" oninput="updateInputRow(${index}, 'count', this.value)" placeholder="0" class="w-full p-3 bg-gray-50 rounded-xl border-none font-bold text-gray-700 focus:ring-2 focus:ring-blue-500 outline-none">
-                                            </td>
-                                            <td class="py-4 px-2 text-right">
-                                                <button onclick="removeInputRow(${index})" class="p-2 text-red-400 hover:text-red-600"><i data-lucide="x" class="w-5 h-5"></i></button>
-                                            </td>
-                                        </tr>
-                                    `).join('')}
-                                </tbody>
-                            </table>
-                        </div>
-                        <button onclick="submitInputData()" class="w-full bg-blue-600 text-white py-4 rounded-2xl font-black shadow-xl shadow-blue-100 hover:bg-blue-700 transition-all active:scale-[0.99]">Simpan ke Bank Data</button>
-                    </div>
+           // --- STATE DATA (Ganti logika localStorage dengan Array kosong dulu) ---
+            // Kita set default dulu, nanti diisi otomatis oleh Supabase
+            const [settings, setSettings] = useState({ ...DEFAULT_OFFICE, adminPin: DEFAULT_PIN });
+            const [employees, setEmployees] = useState([]); 
+            const [attendanceLogs, setAttendanceLogs] = useState([]);
 
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <div class="bg-white p-8 rounded-[2.5rem] shadow-sm border border-gray-100 flex items-center justify-between overflow-hidden relative">
-                            <div class="flex items-center gap-6 relative z-10">
-                                <div class="bg-green-100 p-5 rounded-3xl text-green-600 transition-transform relative"><i data-lucide="banknote" class="w-10 h-10"></i></div>
-                                <div>
-                                    <p class="text-xs font-black text-gray-400 uppercase tracking-[0.2em] mb-1">Total Komisi</p>
-                                    <p class="text-4xl font-black ${state.showCommission ? 'text-gray-900' : 'text-gray-200'}">
-                                        ${state.showCommission ? 'Rp ' + totalCommission.toLocaleString('id-ID') : 'Rp ••••••••'}
-                                    </p>
-                                </div>
-                            </div>
-                            <button onclick="${state.showCommission ? 'toggleCommission(false)' : 'togglePinModal(true)'}" class="p-4 rounded-2xl bg-gray-50 text-gray-400 z-10 hover:bg-gray-100 transition-colors">
-                                <i data-lucide="${state.showCommission ? 'eye-off' : 'lock'}"></i>
-                            </button>
-                            <div class="absolute top-0 right-0 -mr-10 -mt-10 w-40 h-40 bg-green-50 rounded-full opacity-30"></div>
-                        </div>
+            // --- FUNGSI TARIK DATA (FETCH) DARI SUPABASE ---
+            const fetchData = async () => {
+                try {
+                    // 1. Ambil Settings
+                    const { data: settingData } = await supabase.from('settings').select('*').single();
+                    if (settingData) {
+                        setSettings({
+                            lat: settingData.office_lat,
+                            lng: settingData.office_lng,
+                            radius: settingData.radius_meters,
+                            name: settingData.office_name,
+                            adminPin: settingData.admin_pin
+                        });
+                    }
+
+                    // 2. Ambil Karyawan
+                    const { data: empData } = await supabase.from('employees').select('*').order('name', { ascending: true });
+                    if (empData) {
+                        // Mapping nama field database (snake_case) ke aplikasi (camelCase)
+                        const mappedEmployees = empData.map(e => ({
+                            id: e.id,
+                            name: e.name,
+                            shiftStart: e.shift_start.slice(0, 5), // Ambil HH:mm
+                            shiftEnd: e.shift_end.slice(0, 5),
+                            lateFee: e.late_fee,
+                            overtimeFee: e.overtime_fee
+                        }));
+                        setEmployees(mappedEmployees);
+                    }
+
+                    // 3. Ambil Log Absensi (Hari ini saja biar ringan, atau 7 hari terakhir)
+                    const { data: logData } = await supabase.from('attendance_logs')
+                        .select('*')
+                        .order('timestamp', { ascending: false });
                         
-                        <div class="bg-white p-8 rounded-[2.5rem] shadow-sm border border-gray-100 flex items-center gap-6 overflow-hidden relative group">
-                            <div class="bg-blue-100 p-5 rounded-3xl text-blue-600 transition-transform relative z-10"><i data-lucide="package" class="w-10 h-10"></i></div>
-                            <div class="relative z-10">
-                                <p class="text-xs font-black text-gray-400 uppercase tracking-[0.2em] mb-1">Total Kiriman</p>
-                                <p class="text-4xl font-black text-gray-900">${totalShipments.toLocaleString('id-ID')} <span class="text-lg font-bold text-gray-300">Paket</span></p>
-                            </div>
-                            <div class="absolute top-0 right-0 -mr-10 -mt-10 w-40 h-40 bg-blue-50 rounded-full opacity-30"></div>
-                        </div>
-                    </div>
+                    
+                    if (logData) {
+                        const mappedLogs = logData.map(l => ({
+                            id: l.id,
+                            employeeId: l.employee_id,
+                            employeeName: l.employee_name,
+                            date: l.date,
+                            timestamp: l.timestamp, // Format ISO dari Supabase sudah cocok
+                            type: l.type,
+                            status: l.status,
+                            penalty: l.penalty,
+                            bonus: l.bonus,
+                            note: l.note,
+                            distance: l.distance_meters
+                        }));
+                        setAttendanceLogs(mappedLogs);
+                    }
 
-                    <div class="bg-white rounded-[2.5rem] shadow-sm border border-gray-100 overflow-hidden">
-                        <div class="p-8 border-b border-gray-50 flex flex-col md:flex-row justify-between items-center bg-gray-50/20 gap-4">
-                            <h3 class="font-black text-gray-900 text-xl text-center md:text-left">Bank Data Rekapitulasi</h3>
-                            <div class="flex items-center gap-4 bg-white p-2 rounded-2xl border shadow-sm">
-                                <input type="date" value="${state.dateRange.start}" onchange="updateDateRange('start', this.value)" class="bg-transparent px-2 font-bold text-xs text-gray-600 outline-none">
-                                <span class="text-gray-300 font-bold">s/d</span>
-                                <input type="date" value="${state.dateRange.end}" onchange="updateDateRange('end', this.value)" class="bg-transparent px-2 font-bold text-xs text-gray-600 outline-none">
-                            </div>
-                        </div>
-                        <div class="overflow-x-auto">
-                            <table class="w-full text-left text-sm">
-                                <thead class="bg-gray-50/50 text-gray-400 font-black uppercase text-[10px] tracking-[0.2em] border-b">
-                                    <tr>
-                                        <th class="px-8 py-5">Tanggal</th>
-                                        <th class="px-8 py-5">Ekspedisi</th>
-                                        <th class="px-8 py-5 text-right">Jumlah</th>
-                                        <th class="px-8 py-5 text-right">Komisi</th>
-                                        <th class="px-8 py-5 text-right">Aksi</th>
-                                    </tr>
-                                </thead>
-                                <tbody class="divide-y divide-gray-50">
-                                    ${filtered.map(item => `
-                                        <tr class="hover:bg-blue-50/20 transition-colors group">
-                                            <td class="px-8 py-5 text-gray-500 font-bold">${new Date(item.tanggal).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' })}</td>
-                                            <td class="px-8 py-5 font-black uppercase text-[11px] tracking-wide text-gray-700">${item.nama_ekspedisi}</td>
-                                            <td class="px-8 py-5 text-right"><span class="bg-blue-600 text-white px-3 py-1 rounded-full font-black text-[10px]">${item.poin} Pkt</span></td>
-                                            <td class="px-8 py-5 text-right font-black ${state.showCommission ? 'text-green-600' : 'text-gray-200 tracking-tighter'}">${state.showCommission ? 'Rp ' + Number(item.komisi).toLocaleString('id-ID') : '••••••'}</td>
-                                            <td class="px-8 py-5 text-right">
-                                                <button onclick="confirmDeleteEntry('${item.id}')" class="p-2 text-red-300 hover:text-red-600 opacity-0 group-hover:opacity-100 transition-all"><i data-lucide="trash-2" class="w-4 h-4"></i></button>
-                                            </td>
-                                        </tr>
-                                    `).join('') || '<tr><td colspan="5" class="p-20 text-center text-gray-400 font-medium italic">Belum ada data rekaman</td></tr>'}
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-                </div>
-            `;
-            lucide.createIcons();
-        }
+                } catch (error) {
+                    console.error("Gagal mengambil data:", error);
+                }
+            };
 
-        // --- View Analisa Statistik ---
-        function renderAnalytics() {
-            const filtered = state.shipments.filter(s => s.tanggal >= state.dateRange.start && s.tanggal <= state.dateRange.end);
-            
-            const content = document.getElementById('app-content');
-            content.innerHTML = `
-                <div class="max-w-7xl mx-auto px-4 py-8 space-y-8 animate-in fade-in duration-500">
-                    <div class="flex flex-col md:flex-row justify-between items-center gap-4">
-                        <h1 class="text-3xl font-extrabold text-gray-900 tracking-tight">Analisa Statistik</h1>
-                        <div class="flex items-center gap-4 bg-white p-2 rounded-2xl border shadow-sm">
-                            <input type="date" value="${state.dateRange.start}" onchange="updateDateRange('start', this.value)" class="bg-transparent px-2 font-bold text-xs text-gray-600 outline-none">
-                            <span class="text-gray-300 font-bold">s/d</span>
-                            <input type="date" value="${state.dateRange.end}" onchange="updateDateRange('end', this.value)" class="bg-transparent px-2 font-bold text-xs text-gray-600 outline-none">
-                        </div>
-                    </div>
-
-                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                        <div class="bg-white p-8 rounded-[2.5rem] border border-gray-100 shadow-sm">
-                            <h3 class="font-black text-gray-800 text-lg mb-6 flex items-center gap-2"><i data-lucide="trending-up" class="text-blue-600"></i> Tren Pengiriman Harian</h3>
-                            <div class="h-64 relative">
-                                <canvas id="growthChart"></canvas>
-                            </div>
-                        </div>
-
-                        <div class="bg-white p-8 rounded-[2.5rem] border border-gray-100 shadow-sm">
-                            <h3 class="font-black text-gray-800 text-lg mb-6 flex items-center gap-2"><i data-lucide="pie-chart" class="text-purple-600"></i> Distribusi Ekspedisi</h3>
-                            <div class="h-64 relative">
-                                <canvas id="distChart"></canvas>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Laporan Analisa Kenaikan/Penurunan (Baru) -->
-                    <div class="bg-white p-8 rounded-[2.5rem] border border-gray-100 shadow-sm">
-                        <h3 class="font-black text-gray-800 text-lg mb-6 flex items-center gap-2"><i data-lucide="trending-up" class="text-blue-600"></i> Analisa Perubahan Volume Per Ekspedisi</h3>
-                        <div class="overflow-x-auto">
-                            <table class="w-full text-left text-sm">
-                                <thead class="bg-gray-50/50 text-gray-400 font-black uppercase text-[10px] tracking-widest border-b">
-                                    <tr>
-                                        <th class="px-6 py-4">Ekspedisi</th>
-                                        <th class="px-6 py-4 text-center">Periode Awal</th>
-                                        <th class="px-6 py-4 text-center">Periode Akhir</th>
-                                        <th class="px-6 py-4 text-center">Perubahan</th>
-                                        <th class="px-6 py-4 text-right">Status</th>
-                                    </tr>
-                                </thead>
-                                <tbody id="growth-table-body" class="divide-y divide-gray-50">
-                                    <!-- Diisi oleh JS -->
-                                </tbody>
-                            </table>
-                        </div>
-                        <div id="analysis-insights" class="grid grid-cols-1 md:grid-cols-3 gap-6 mt-12">
-                            <!-- Ringkasan analisa -->
-                        </div>
-                    </div>
-                </div>
-            `;
-            lucide.createIcons();
-            initAnalyticsCharts(filtered);
-        }
-
-        function initAnalyticsCharts(data) {
-            // Urutkan data berdasarkan tanggal
-            const sortedData = [...data].sort((a, b) => new Date(a.tanggal) - new Date(b.tanggal));
-            
-            // 1. Logika Grafik Garis (Tren Harian)
-            const dateGroups = {};
-            sortedData.forEach(s => {
-                dateGroups[s.tanggal] = (dateGroups[s.tanggal] || 0) + Number(s.poin);
-            });
-            const sortedDates = Object.keys(dateGroups).sort();
-            const dateLabels = sortedDates.map(d => new Date(d).toLocaleDateString('id-ID', { day: '2-digit', month: 'short' }));
-            const dateValues = sortedDates.map(d => dateGroups[d]);
-
-            // 2. Logika Grafik Pie (Distribusi)
-            const expGroups = {};
-            data.forEach(s => {
-                expGroups[s.nama_ekspedisi] = (expGroups[s.nama_ekspedisi] || 0) + Number(s.poin);
-            });
-            const expLabels = Object.keys(expGroups);
-            const expValues = Object.values(expGroups);
-
-            // 3. Analisa Kenaikan/Penurunan per Ekspedisi
-            // Bagi data menjadi 2 bagian waktu (awal dan akhir periode)
-            const uniqueDates = sortedDates;
-            const midIndex = Math.ceil(uniqueDates.length / 2);
-            const firstHalfDates = uniqueDates.slice(0, midIndex);
-            const secondHalfDates = uniqueDates.slice(midIndex);
-
-            const growthTableBody = document.getElementById('growth-table-body');
-            const allExpeditions = state.settings.map(s => s.name);
-            let growthRowsHtml = '';
-
-            allExpeditions.forEach(expName => {
-                const totalFirst = sortedData
-                    .filter(s => s.nama_ekspedisi === expName && firstHalfDates.includes(s.tanggal))
-                    .reduce((acc, curr) => acc + Number(curr.poin), 0);
+            // --- EFFECT: JALANKAN SAAT APLIKASI BUKA ---
+            useEffect(() => {
+                fetchData(); // Tarik data saat pertama buka
                 
-                const totalSecond = sortedData
-                    .filter(s => s.nama_ekspedisi === expName && secondHalfDates.includes(s.tanggal))
-                    .reduce((acc, curr) => acc + Number(curr.poin), 0);
+                // Realtime Subscription (Agar update otomatis tanpa reload)
+                const channel = supabase
+                    .channel('realtime_changes')
+                    .on('postgres_changes', { event: '*', schema: 'public', table: 'attendance_logs' }, () => {
+                        fetchData(); // Jika ada absen baru, tarik data ulang
+                    })
+                    .on('postgres_changes', { event: '*', schema: 'public', table: 'employees' }, () => {
+                        fetchData(); // Jika ada karyawan baru/edit
+                    })
+                    .on('postgres_changes', { event: '*', schema: 'public', table: 'settings' }, () => {
+                        fetchData(); // Jika setting berubah
+                    })
+                    .subscribe();
 
-                const diff = totalSecond - totalFirst;
-                const percent = totalFirst > 0 ? ((diff / totalFirst) * 100).toFixed(1) : (totalSecond > 0 ? "100" : "0");
-                const isGrowth = diff > 0;
-                const isDown = diff < 0;
+                const timer = setInterval(() => setCurrentTime(new Date()), 1000);
+                
+                return () => {
+                    clearInterval(timer);
+                    supabase.removeChannel(channel);
+                };
+            }, []);
 
-                growthRowsHtml += `
-                    <tr>
-                        <td class="px-6 py-5 font-black uppercase text-gray-700 tracking-wide text-[11px]">${expName}</td>
-                        <td class="px-6 py-5 text-center font-bold text-gray-500">${totalFirst}</td>
-                        <td class="px-6 py-5 text-center font-bold text-gray-900">${totalSecond}</td>
-                        <td class="px-6 py-5 text-center">
-                            <span class="font-black ${diff >= 0 ? 'text-green-600' : 'text-red-600'} text-xs">
-                                ${diff > 0 ? '+' : ''}${diff} (${percent}%)
-                            </span>
-                        </td>
-                        <td class="px-6 py-5 text-right">
-                            ${isGrowth ? 
-                                '<span class="bg-green-100 text-green-700 px-3 py-1 rounded-full text-[10px] font-black uppercase flex items-center justify-end gap-1"><i data-lucide="trending-up" class="w-3 h-3"></i> Naik</span>' : 
-                                (isDown ? 
-                                '<span class="bg-red-100 text-red-700 px-3 py-1 rounded-full text-[10px] font-black uppercase flex items-center justify-end gap-1"><i data-lucide="trending-down" class="w-3 h-3"></i> Turun</span>' : 
-                                '<span class="bg-gray-100 text-gray-500 px-3 py-1 rounded-full text-[10px] font-black uppercase flex items-center justify-end gap-1">Stabil</span>')}
-                        </td>
-                    </tr>
-                `;
-            });
-            growthTableBody.innerHTML = growthRowsHtml || '<tr><td colspan="5" class="p-10 text-center text-gray-400 italic font-medium">Lengkapi setidaknya 2 hari data untuk melihat analisa tren</td></tr>';
+            useEffect(() => {
+                if (!navigator.geolocation) {
+                    setErrorMsg("Browser tidak mendukung Geolocation.");
+                    return;
+                }
 
-            // 4. Laporan Insight
-            const totalPackets = data.reduce((a, b) => a + Number(b.poin), 0);
-            const topExp = expLabels.length > 0 ? expLabels.reduce((a, b) => expGroups[a] > expGroups[b] ? a : b) : "-";
-            const avgDaily = dateLabels.length > 0 ? (totalPackets / dateLabels.length).toFixed(1) : 0;
+                const targetLat = settings.lat;
+                const targetLng = settings.lng;
 
-            const insightsArea = document.getElementById('analysis-insights');
-            insightsArea.innerHTML = `
-                <div class="p-6 bg-blue-50 rounded-[2rem] border border-blue-100">
-                    <p class="text-[10px] font-black text-blue-400 uppercase tracking-widest mb-2">Market Leader</p>
-                    <p class="text-sm text-gray-700 leading-relaxed font-semibold">Ekspedisi <b class="text-blue-600 uppercase underline decoration-2">${topExp}</b> memimpin pengiriman dengan volume <b class="text-blue-600">${expGroups[topExp] || 0} paket</b>.</p>
-                </div>
-                <div class="p-6 bg-indigo-50 rounded-[2rem] border border-indigo-100">
-                    <p class="text-[10px] font-black text-indigo-400 uppercase tracking-widest mb-2">Volume Harian</p>
-                    <p class="text-sm text-gray-700 leading-relaxed font-semibold">Tercatat rata-rata pengiriman sebanyak <b class="text-indigo-600">${avgDaily} paket per hari</b> dalam rentang waktu terpilih.</p>
-                </div>
-                <div class="p-6 bg-purple-50 rounded-[2rem] border border-purple-100">
-                    <p class="text-[10px] font-black text-purple-400 uppercase tracking-widest mb-2">Efisiensi</p>
-                    <p class="text-sm text-gray-700 leading-relaxed font-semibold">Terdapat <b class="text-purple-600">${expLabels.length} ekspedisi aktif</b> yang melayani operasional Uberpaket pada periode ini.</p>
-                </div>
-            `;
+                const successHandler = (position) => {
+                    const { latitude, longitude } = position.coords;
+                    setUserLocation({ lat: latitude, lng: longitude });
+                    const dist = calculateDistance(latitude, longitude, targetLat, targetLng);
+                    setDistance(dist);
+                    setErrorMsg('');
+                };
 
-            // Setup Charts
-            if (state.charts.line) state.charts.line.destroy();
-            if (state.charts.pie) state.charts.pie.destroy();
+                const errorHandler = (err) => {
+                    console.warn("Geo Error:", err.message);
+                    let msg = "Gagal mengambil lokasi.";
+                    if (err.code === 1) msg = "Izin lokasi ditolak. Mohon izinkan akses GPS.";
+                    else if (err.code === 2) msg = "Sinyal GPS lemah atau tidak tersedia.";
+                    else if (err.code === 3) msg = "Waktu permintaan lokasi habis.";
+                    setErrorMsg(msg);
+                };
 
-            const ctxLine = document.getElementById('growthChart').getContext('2d');
-            state.charts.line = new Chart(ctxLine, {
-                type: 'line',
-                data: {
-                    labels: dateLabels,
-                    datasets: [{
-                        label: 'Paket',
-                        data: dateValues,
-                        borderColor: '#2563eb',
-                        backgroundColor: 'rgba(37, 99, 235, 0.1)',
-                        fill: true,
-                        tension: 0.4,
-                        borderWidth: 3,
-                        pointRadius: 4,
-                        pointBackgroundColor: '#fff'
-                    }]
-                },
-                options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true } } }
-            });
+                const watchId = navigator.geolocation.watchPosition(successHandler, errorHandler, { enableHighAccuracy: true, maximumAge: 10000, timeout: 10000 });
+                return () => navigator.geolocation.clearWatch(watchId);
+            }, [settings.lat, settings.lng]);
 
-            const ctxPie = document.getElementById('distChart').getContext('2d');
-            state.charts.pie = new Chart(ctxPie, {
-                type: 'doughnut',
-                data: {
-                    labels: expLabels.map(l => l.toUpperCase()),
-                    datasets: [{
-                        data: expValues,
-                        backgroundColor: ['#2563eb', '#8b5cf6', '#ec4899', '#f59e0b', '#10b981', '#6366f1'],
-                        borderWidth: 0
-                    }]
-                },
-                options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom', labels: { usePointStyle: true, padding: 20, font: { weight: 'bold', size: 10 } } } }, cutout: '70%' }
-            });
-            
-            lucide.createIcons();
-        }
+           // --- FUNGSI ABSEN DENGAN DEVICE ID ---
+            const handleAttendance = async (employeeId, type) => {
+                if (!userLocation) {
+                    alert("Lokasi belum ditemukan! Mohon tunggu sebentar.");
+                    return;
+                }
 
-        function renderSettings() {
-            const content = document.getElementById('app-content');
-            content.innerHTML = `
-                <div class="max-w-4xl mx-auto px-4 py-8 space-y-8 animate-in fade-in duration-500">
-                    <h1 class="text-3xl font-extrabold text-gray-900 tracking-tight">Pengaturan Komisi</h1>
-                    <div class="grid lg:grid-cols-3 gap-8">
-                        <div class="bg-white p-8 rounded-[2.5rem] border border-gray-100 shadow-sm h-fit">
-                            <h3 class="font-black text-gray-800 mb-6 tracking-tight text-center md:text-left">Tambah Ekspedisi</h3>
-                            <input id="set-name" placeholder="Nama Ekspedisi" class="w-full p-4 border rounded-2xl bg-gray-50 mb-4 font-bold outline-none focus:ring-2 focus:ring-blue-500">
-                            <input id="set-rate" type="number" placeholder="Komisi/Paket" class="w-full p-4 border rounded-2xl bg-gray-50 mb-6 font-bold outline-none focus:ring-2 focus:ring-blue-500">
-                            <button onclick="addExpedition()" class="w-full bg-blue-600 text-white py-4 rounded-2xl font-bold shadow-lg shadow-blue-100 hover:bg-blue-700 transition-all active:scale-95">Simpan</button>
+                // 1. SIAPKAN DEVICE ID
+                // Cek apakah browser ini sudah punya ID unik. Kalau belum, buat baru.
+                let deviceId = localStorage.getItem('app_device_id');
+                if (!deviceId) {
+                    // Generate ID acak sederhana
+                    deviceId = 'dev_' + Math.random().toString(36).substr(2, 9) + Date.now().toString(36);
+                    localStorage.setItem('app_device_id', deviceId);
+                }
+
+                console.log("Mengirim absen dari Device ID:", deviceId);
+
+                try {
+                    // 2. Panggil RPC dengan parameter p_device_id
+                    const { data, error } = await supabase.rpc('submit_attendance', {
+                        p_employee_id: parseInt(employeeId),
+                        p_user_lat: userLocation.lat,
+                        p_user_lng: userLocation.lng,
+                        p_type: type,
+                        p_device_id: deviceId // <--- KIRIM ID KE SINI
+                    });
+
+                    if (error) throw error;
+
+                    if (!data.success) {
+                        alert("GAGAL: " + data.message);
+                    } else {
+                        alert("SUKSES: " + data.message + "\nStatus: " + data.status);
+                        fetchData();
+                    }
+
+                } catch (err) {
+                    alert("Terjadi kesalahan sistem: " + err.message);
+                }
+            };
+            // --------------------------------------- 
+
+            return (
+                <div className="min-h-screen">
+                    <div className="bg-blue-600 text-white p-4 shadow-md flex justify-between items-center sticky top-0 z-10">
+                        <div>
+                            <h1 className="text-xl font-bold flex items-center gap-2"><IconMapPin className="w-5 h-5" /> HadirPak</h1>
+                            <p className="text-xs opacity-90">{currentTime.toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long' })}</p>
                         </div>
-                        <div class="lg:col-span-2 bg-white rounded-[2.5rem] border border-gray-100 overflow-hidden shadow-sm">
-                            <table class="w-full text-left">
-                                <thead class="bg-gray-50/50 text-[10px] font-black uppercase text-gray-400 tracking-[0.2em] border-b">
-                                    <tr><th class="px-8 py-5">Ekspedisi</th><th class="px-8 py-5 text-right">Tarif</th><th class="px-8 py-5 text-right">Aksi</th></tr>
-                                </thead>
-                                <tbody class="divide-y divide-gray-50">
-                                    ${state.settings.map(c => `
-                                        <tr>
-                                            <td class="px-8 py-5 font-black uppercase text-gray-700 tracking-wide">${c.name}</td>
-                                            <td class="px-8 py-5 text-right text-green-600 font-black">Rp ${Number(c.rate).toLocaleString('id-ID')}</td>
-                                            <td class="px-8 py-5 text-right">
-                                                <button onclick="confirmDeleteSetting('${c.id}', '${c.name}')" class="p-2 text-red-300 hover:text-red-600 transition-colors">
-                                                    <i data-lucide="trash-2" class="w-4 h-4"></i>
-                                                </button>
-                                            </td>
-                                        </tr>
-                                    `).join('') || '<tr><td colspan="3" class="p-10 text-center text-gray-400 italic">Belum ada daftar ekspedisi</td></tr>'}
-                                </tbody>
-                            </table>
+                        <div>
+                            {view === 'home' ? (
+                                <button onClick={() => setView('admin-login')} className="bg-blue-700 hover:bg-blue-800 p-2 rounded-full text-xs font-semibold flex items-center gap-1 transition"><IconSettings className="w-4 h-4" /> Admin</button>
+                            ) : (
+                                <button onClick={() => setView('home')} className="bg-blue-700 hover:bg-blue-800 p-2 rounded-full text-xs font-semibold flex items-center gap-1 transition"><IconLogOut className="w-4 h-4" /> Keluar</button>
+                            )}
                         </div>
                     </div>
 
-                    <div class="bg-red-50 p-8 rounded-[2.5rem] border-2 border-red-100 shadow-sm mt-12">
-                        <div class="flex flex-col md:flex-row justify-between items-center gap-6">
-                            <div class="text-center md:text-left">
-                                <h3 class="text-red-800 font-black text-xl mb-1">Zona Bahaya</h3>
-                                <p class="text-red-600 text-sm font-medium">Hapus seluruh data bank data secara permanen</p>
+                    <main className="p-4 max-w-md mx-auto md:max-w-2xl lg:max-w-4xl">
+                        {view === 'home' && <EmployeeView employees={employees} userLocation={userLocation} distance={distance} settings={settings} errorMsg={errorMsg} currentTime={currentTime} onAttendance={handleAttendance} logs={attendanceLogs} />}
+                        {view === 'admin-login' && <AdminLogin actualPin={settings.adminPin} onSuccess={() => setView('admin-dashboard')} />}
+                        {view === 'admin-dashboard' && <AdminDashboard employees={employees} setEmployees={setEmployees} logs={attendanceLogs} settings={settings} setSettings={setSettings} />}
+                    </main>
+                </div>
+            );
+        }
+
+        // --- SUB COMPONENTS ---
+
+        function EmployeeView({ employees, userLocation, distance, settings, errorMsg, currentTime, onAttendance, logs }) {
+            const [selectedId, setSelectedId] = useState('');
+            const inRange = distance !== null && distance <= settings.radius;
+            const today = new Date().toISOString().split('T')[0];
+            const myLogsToday = logs.filter(l => l.date === today && l.employeeId === parseInt(selectedId));
+            const hasIn = myLogsToday.find(l => l.type === 'IN');
+            const hasOut = myLogsToday.find(l => l.type === 'OUT');
+
+            return (
+                <div className="space-y-6">
+                    <div className="bg-white p-6 rounded-2xl shadow-sm text-center">
+                        <div className="text-gray-500 text-sm uppercase tracking-wider font-semibold">Waktu Sekarang</div>
+                        <div className="text-4xl font-mono font-bold text-gray-800 my-2">{currentTime.toLocaleTimeString('id-ID')}</div>
+                        <div className={`mt-4 p-3 rounded-lg border flex items-center justify-center gap-2 ${errorMsg ? 'bg-red-50 border-red-200 text-red-600' : inRange ? 'bg-green-50 border-green-200 text-green-700' : 'bg-orange-50 border-orange-200 text-orange-700'}`}>
+                            {errorMsg ? <><IconAlertTriangle className="w-5 h-5 flex-shrink-0" /> <span className="text-sm text-left">{errorMsg}</span></> : !userLocation ? <><div className="animate-spin rounded-full h-4 w-4 border-b-2 border-current"></div> Mencari lokasi...</> : <>
+                                {inRange ? <IconCheckCircle className="w-5 h-5"/> : <IconAlertTriangle className="w-5 h-5"/>}
+                                <span className="font-medium">{inRange ? "Dalam Jangkauan" : "Di Luar Jangkauan"} <span className="ml-1 text-sm opacity-75">({distance ? Math.round(distance) : 0}m)</span></span>
+                            </>}
+                        </div>
+                        {!inRange && userLocation && !errorMsg && <p className="text-xs text-orange-600 mt-2">Max radius {settings.radius}m dari kantor.</p>}
+                    </div>
+
+                    <div className="bg-white p-6 rounded-2xl shadow-sm">
+                        <label className="block text-sm font-medium text-gray-700 mb-2">Pilih Nama Anda</label>
+                        <select className="w-full p-3 border rounded-lg bg-gray-50 mb-6 focus:ring-2 focus:ring-blue-500 outline-none" value={selectedId} onChange={(e) => setSelectedId(e.target.value)}>
+                            <option value="">-- Pilih Karyawan --</option>
+                            {employees.map(e => <option key={e.id} value={e.id}>{e.name}</option>)}
+                        </select>
+
+                        <div className="grid grid-cols-2 gap-4">
+                            <button onClick={() => onAttendance(selectedId, 'IN')} disabled={!inRange || !selectedId || hasIn} className={`p-4 rounded-xl flex flex-col items-center justify-center gap-2 transition font-bold text-white ${!inRange || !selectedId || hasIn ? 'bg-gray-300 cursor-not-allowed' : 'bg-emerald-500 hover:bg-emerald-600 shadow-lg shadow-emerald-200'}`}>
+                                <IconClock className="w-6 h-6" /> {hasIn ? 'Sudah Masuk' : 'Absen Masuk'}
+                                {hasIn && <span className="text-xs font-normal opacity-90">{formatTime(hasIn.timestamp)}</span>}
+                            </button>
+                            <button onClick={() => onAttendance(selectedId, 'OUT')} disabled={!inRange || !selectedId || !hasIn || hasOut} className={`p-4 rounded-xl flex flex-col items-center justify-center gap-2 transition font-bold text-white ${!inRange || !selectedId || !hasIn || hasOut ? 'bg-gray-300 cursor-not-allowed' : 'bg-rose-500 hover:bg-rose-600 shadow-lg shadow-rose-200'}`}>
+                                <IconLogOut className="w-6 h-6" /> {hasOut ? 'Sudah Pulang' : 'Absen Pulang'}
+                                {hasOut && <span className="text-xs font-normal opacity-90">{formatTime(hasOut.timestamp)}</span>}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            );
+        }
+
+        function AdminLogin({ actualPin, onSuccess }) {
+            const [input, setInput] = useState('');
+            const [error, setError] = useState(false);
+            const handleSubmit = (e) => { e.preventDefault(); if (input === actualPin) onSuccess(); else { setError(true); setInput(''); } };
+            return (
+                <div className="flex flex-col items-center justify-center min-h-[50vh]">
+                    <div className="bg-white p-8 rounded-2xl shadow-lg w-full max-w-sm text-center">
+                        <IconLock className="w-12 h-12 text-blue-500 mx-auto mb-4" />
+                        <h2 className="text-2xl font-bold text-gray-800 mb-2">Akses Admin</h2>
+                        <form onSubmit={handleSubmit}>
+                            <input type="password" maxLength={6} className="w-full text-center text-3xl tracking-widest p-3 border-2 rounded-lg mb-4 font-mono" value={input} onChange={(e) => { setInput(e.target.value); setError(false); }} placeholder="••••••" autoFocus />
+                            {error && <p className="text-red-500 text-sm mb-4">PIN Salah!</p>}
+                            <button type="submit" className="w-full bg-blue-600 text-white py-3 rounded-lg font-bold hover:bg-blue-700">Masuk</button>
+                        </form>
+                    </div>
+                </div>
+            );
+        }
+
+        function AdminDashboard({ employees, setEmployees, logs, settings, setSettings }) {
+            const [tab, setTab] = useState('employees');
+            return (
+                <div className="bg-white rounded-2xl shadow-sm overflow-hidden min-h-[80vh]">
+                    <div className="flex border-b">
+                        <button onClick={() => setTab('employees')} className={`flex-1 py-4 text-sm font-medium flex items-center justify-center gap-2 ${tab === 'employees' ? 'text-blue-600 border-b-2 border-blue-600 bg-blue-50' : 'text-gray-500 hover:bg-gray-50'}`}><IconUsers className="w-4 h-4" /> Karyawan</button>
+                        <button onClick={() => setTab('reports')} className={`flex-1 py-4 text-sm font-medium flex items-center justify-center gap-2 ${tab === 'reports' ? 'text-blue-600 border-b-2 border-blue-600 bg-blue-50' : 'text-gray-500 hover:bg-gray-50'}`}><IconFileText className="w-4 h-4" /> Laporan</button>
+                        <button onClick={() => setTab('settings')} className={`flex-1 py-4 text-sm font-medium flex items-center justify-center gap-2 ${tab === 'settings' ? 'text-blue-600 border-b-2 border-blue-600 bg-blue-50' : 'text-gray-500 hover:bg-gray-50'}`}><IconSettings className="w-4 h-4" /> Setting</button>
+                    </div>
+                    <div className="p-4 md:p-6">
+                        {tab === 'employees' && <ManageEmployees employees={employees} setEmployees={setEmployees} />}
+                        {tab === 'reports' && <Reports logs={logs} employees={employees} />}
+                        {tab === 'settings' && <GlobalSettings settings={settings} setSettings={setSettings} />}
+                    </div>
+                </div>
+            );
+        }
+
+function ManageEmployees({ employees }) { 
+            const [isEditing, setIsEditing] = useState(false);
+            const [formData, setFormData] = useState({ id: null, name: '', shiftStart: '08:00', shiftEnd: '17:00', lateFee: 0, overtimeFee: 0 });
+            const [isLoading, setIsLoading] = useState(false);
+
+            // --- FUNGSI RESET DEVICE (BARU) ---
+            const handleResetDevice = async (empName, empId) => {
+                if (!window.confirm(`Reset Device untuk ${empName}?\n\nLakukan ini HANYA jika karyawan ganti HP.`)) return;
+                
+                try {
+                    const { error } = await supabase
+                        .from('employees')
+                        .update({ device_id: null }) // Kosongkan device_id di database
+                        .eq('id', empId);
+
+                    if (error) throw error;
+                    alert(`Device ${empName} berhasil di-reset. Silakan login di HP baru.`);
+                } catch (err) {
+                    alert('Gagal reset: ' + err.message);
+                }
+            };
+            // ----------------------------------
+
+            const handleSubmit = async (e) => {
+                e.preventDefault();
+                setIsLoading(true);
+                const payload = {
+                    name: formData.name,
+                    shift_start: formData.shiftStart,
+                    shift_end: formData.shiftEnd,
+                    late_fee: formData.lateFee,
+                    overtime_fee: formData.overtimeFee
+                };
+
+                try {
+                    if (formData.id) {
+                        const { error } = await supabase.from('employees').update(payload).eq('id', formData.id);
+                        if (error) throw error;
+                        alert('Data berhasil diupdate!');
+                    } else {
+                        const { error } = await supabase.from('employees').insert([payload]);
+                        if (error) throw error;
+                        alert('Karyawan berhasil ditambahkan!');
+                    }
+                    setIsEditing(false);
+                    setFormData({ id: null, name: '', shiftStart: '08:00', shiftEnd: '17:00', lateFee: 0, overtimeFee: 0 });
+                } catch (error) {
+                    alert('Gagal menyimpan: ' + error.message);
+                } finally {
+                    setIsLoading(false);
+                }
+            };
+
+            const handleDelete = async (id) => {
+                if (!window.confirm('Yakin ingin menghapus karyawan ini?')) return;
+                try {
+                    const { error } = await supabase.from('employees').delete().eq('id', id);
+                    if (error) throw error;
+                    alert('Karyawan dihapus.');
+                } catch (error) {
+                    alert('Gagal menghapus: ' + error.message);
+                }
+            };
+
+            const handleEdit = (emp) => { setFormData(emp); setIsEditing(true); };
+
+            if (isEditing) return (
+                <div>
+                    <div className="flex justify-between items-center mb-4">
+                        <h3 className="font-bold text-lg">{formData.id ? 'Edit Karyawan' : 'Tambah Karyawan'}</h3>
+                        <button onClick={() => setIsEditing(false)} className="text-gray-500 hover:text-gray-700"><IconX /></button>
+                    </div>
+                    <form onSubmit={handleSubmit} className="space-y-4">
+                        <div><label className="block text-sm text-gray-600">Nama Lengkap</label><input required type="text" className="w-full border p-2 rounded" value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} /></div>
+                        <div className="grid grid-cols-2 gap-4"><div><label className="block text-sm text-gray-600">Jam Masuk</label><input required type="time" className="w-full border p-2 rounded" value={formData.shiftStart} onChange={e => setFormData({...formData, shiftStart: e.target.value})} /></div><div><label className="block text-sm text-gray-600">Jam Pulang</label><input required type="time" className="w-full border p-2 rounded" value={formData.shiftEnd} onChange={e => setFormData({...formData, shiftEnd: e.target.value})} /></div></div>
+                        <div className="grid grid-cols-2 gap-4"><div><label className="block text-sm text-gray-600">Denda Telat (Rp)</label><input required type="number" className="w-full border p-2 rounded" value={formData.lateFee} onChange={e => setFormData({...formData, lateFee: parseInt(e.target.value)})} /></div><div><label className="block text-sm text-gray-600">Fee Lembur / Jam (Rp)</label><input required type="number" className="w-full border p-2 rounded" value={formData.overtimeFee} onChange={e => setFormData({...formData, overtimeFee: parseInt(e.target.value)})} /></div></div>
+                        <button type="submit" disabled={isLoading} className="w-full bg-blue-600 text-white p-3 rounded font-bold hover:bg-blue-700 disabled:bg-gray-400">{isLoading ? 'Menyimpan...' : 'Simpan'}</button>
+                    </form>
+                </div>
+            );
+
+            return (
+                <div>
+                    <div className="flex justify-between items-center mb-6"><h3 className="font-bold text-lg">Daftar Karyawan</h3><button onClick={() => setIsEditing(true)} className="bg-green-600 text-white px-4 py-2 rounded-lg text-sm flex items-center gap-2 hover:bg-green-700"><IconPlus className="w-4 h-4" /> Tambah</button></div>
+                    <div className="space-y-3">{employees.map(emp => (
+                        <div key={emp.id} className="border p-4 rounded-lg flex justify-between items-center bg-gray-50">
+                            <div><div className="font-bold text-gray-800">{emp.name}</div><div className="text-xs text-gray-500 mt-1">Shift: {emp.shiftStart} - {emp.shiftEnd} | Denda: {formatCurrency(emp.lateFee)}</div></div>
+                            <div className="flex gap-2">
+                                {/* TOMBOL RESET DEVICE BARU */}
+                                <button onClick={() => handleResetDevice(emp.name, emp.id)} className="p-2 text-orange-500 hover:bg-orange-100 rounded" title="Reset Device (Ganti HP)"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect width="14" height="20" x="5" y="2" rx="2" ry="2"/><path d="M12 18h.01"/></svg></button>
+                                <button onClick={() => handleEdit(emp)} className="p-2 text-blue-600 hover:bg-blue-100 rounded"><IconEdit2 className="w-4 h-4" /></button>
+                                <button onClick={() => handleDelete(emp.id)} className="p-2 text-red-600 hover:bg-red-100 rounded"><IconTrash2 className="w-4 h-4" /></button>
                             </div>
-                            <button onclick="toggleResetModal(true)" class="px-10 py-4 bg-red-600 text-white rounded-2xl font-black shadow-xl shadow-red-100 hover:bg-red-700 transition-all active:scale-95">Kosongkan Bank Data</button>
                         </div>
-                    </div>
+                    ))}</div>
                 </div>
-            `;
-            lucide.createIcons();
+            );
         }
 
-        // --- Fitur Modal & Handler (Sama seperti sebelumnya) ---
-        function toggleConfirmModal(show, title = "", text = "", onConfirm = null) {
-            const modal = document.getElementById('confirm-modal');
-            if (show) {
-                document.getElementById('confirm-title').innerText = title;
-                document.getElementById('confirm-text').innerText = text;
-                const btn = document.getElementById('confirm-execute-btn');
-                btn.onclick = async () => { if (onConfirm) await onConfirm(); toggleConfirmModal(false); };
-                modal.classList.remove('hidden');
-            } else modal.classList.add('hidden');
-            lucide.createIcons();
-        }
-        function showMessage(title, text, type = 'info') {
-            const modal = document.getElementById('msg-modal');
-            document.getElementById('msg-title').innerText = title;
-            document.getElementById('msg-text').innerText = text;
-            const area = document.getElementById('msg-icon-area');
-            area.className = "w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-4 " + (type === 'error' ? "bg-red-100 text-red-600" : "bg-blue-100 text-blue-600");
-            area.innerHTML = `<i data-lucide="${type === 'error' ? 'alert-circle' : 'info'}"></i>`;
-            modal.classList.remove('hidden');
-            lucide.createIcons();
-        }
-        function closeMsgModal() { document.getElementById('msg-modal').classList.add('hidden'); }
-        function confirmDeleteSetting(id, name) { toggleConfirmModal(true, "Hapus Ekspedisi?", `Hapus "${name.toUpperCase()}" dari daftar?`, async () => { toggleLoader(true, "Menghapus..."); const { error } = await supabaseClient.from('settings').delete().eq('id', id); toggleLoader(false); if (error) showMessage("Gagal", error.message, "error"); else await loadData(); }); }
-        function confirmDeleteEntry(id) { toggleConfirmModal(true, "Hapus Rekaman?", "Tindakan ini akan menghapus rekaman data ini secara permanen.", async () => { toggleLoader(true, "Menghapus..."); const { error } = await supabaseClient.from('shipments').delete().eq('id', id); toggleLoader(false); if (error) showMessage("Gagal", error.message, "error"); else await loadData(); }); }
-        function addInputRow() { state.inputRows.push({ expedition: '', count: '' }); renderDashboard(); }
-        function removeInputRow(index) { if (state.inputRows.length > 1) { state.inputRows.splice(index, 1); renderDashboard(); } }
-        function updateInputRow(index, field, value) { state.inputRows[index][field] = value; }
-        async function submitInputData() {
-            const date = document.getElementById('input-date').value;
-            const validData = state.inputRows.filter(r => r.expedition && r.count > 0);
-            if (validData.length === 0) return showMessage("Peringatan", "Harap isi setidaknya satu baris data yang valid.");
-            toggleLoader(true, "Menyimpan data...");
-            const toInsert = validData.map(row => {
-                const rate = state.settings.find(s => s.name === row.expedition)?.rate || 0;
-                return { nama_ekspedisi: row.expedition, poin: parseInt(row.count), komisi: Number(rate) * parseInt(row.count), tanggal: date, nama_pengirim: "-", no_resi: `INPUT-${Date.now()}` };
+ function Reports({ logs, employees }) {
+            // Setup tanggal default (awal bulan sampai hari ini)
+            const [startDate, setStartDate] = useState(() => { 
+                const now = new Date(); 
+                return new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0]; 
             });
-            const { error } = await supabaseClient.from('shipments').insert(toInsert);
-            toggleLoader(false);
-            if (error) showMessage("Kesalahan", error.message, "error");
-            else { state.inputRows = [{ expedition: '', count: '' }]; await loadData(); showMessage("Berhasil", "Data telah disimpan."); }
+            const [endDate, setEndDate] = useState(() => new Date().toISOString().split('T')[0]);
+            
+            // Filter log berdasarkan tanggal
+            const filteredLogs = useMemo(() => logs.filter(l => {
+                // Pastikan l.date ada isinya sebelum dicek
+                return l.date && l.date >= startDate && l.date <= endDate;
+            }).sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp)), [logs, startDate, endDate]);
+
+            // --- FUNGSI HAPUS LOG (BARU) ---
+            const handleDeleteLog = async (id) => {
+                if (!window.confirm('Hapus data absen ini? \n\nPERHATIAN: Setelah dihapus, karyawan bisa absen ulang untuk hari ini.')) return;
+
+                try {
+                    const { error } = await supabase
+                        .from('attendance_logs')
+                        .delete()
+                        .eq('id', id);
+
+                    if (error) throw error;
+                    alert('Data berhasil dihapus.');
+                    // Tidak perlu refresh manual, karena Realtime Subscription di App() akan otomatis update tabel
+                } catch (err) {
+                    alert('Gagal menghapus: ' + err.message);
+                }
+            };
+
+            const downloadCSV = () => {
+                const headers = ["Tanggal", "Jam", "Nama", "Tipe", "Status", "Jarak(m)", "Denda", "Bonus", "Catatan"];
+                const rows = filteredLogs.map(l => [l.date, formatTime(l.timestamp), l.employeeName, l.type === 'IN' ? 'MASUK' : 'PULANG', l.status, l.distance, l.penalty, l.bonus, l.note]);
+                let csvContent = "data:text/csv;charset=utf-8," + [headers, ...rows].map(e => e.join(",")).join("\n");
+                const link = document.createElement("a"); link.setAttribute("href", encodeURI(csvContent)); link.setAttribute("download", `Laporan_${startDate}_sd_${endDate}.csv`);
+                document.body.appendChild(link); link.click(); document.body.removeChild(link);
+            };
+
+            return (
+                <div>
+                    <div className="flex flex-col md:flex-row gap-4 justify-between items-end mb-6">
+                        <div className="flex gap-4 w-full md:w-auto">
+                            <div className="w-full"><label className="block text-sm text-gray-600 mb-1">Dari</label><input type="date" className="border p-2 rounded w-full" value={startDate} onChange={(e) => setStartDate(e.target.value)} /></div>
+                            <div className="w-full"><label className="block text-sm text-gray-600 mb-1">Sampai</label><input type="date" className="border p-2 rounded w-full" value={endDate} onChange={(e) => setEndDate(e.target.value)} /></div>
+                        </div>
+                        <button onClick={downloadCSV} disabled={filteredLogs.length === 0} className="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm flex items-center gap-2 hover:bg-blue-700 disabled:bg-gray-400 h-10 shrink-0"><IconDownload className="w-4 h-4" /> Download CSV</button>
+                    </div>
+                    
+                    <div className="overflow-x-auto border rounded-lg">
+                        <table className="w-full text-sm text-left">
+                            <thead className="bg-gray-100 text-gray-700 uppercase">
+                                <tr>
+                                    <th className="p-3">Waktu</th>
+                                    <th className="p-3">Nama</th>
+                                    <th className="p-3">Tipe</th>
+                                    <th className="p-3">Status</th>
+                                    <th className="p-3 text-right">Nominal</th>
+                                    <th className="p-3 text-center">Aksi</th> {/* Kolom Baru */}
+                                </tr>
+                            </thead>
+                            <tbody className="divide-y">
+                                {filteredLogs.length === 0 ? 
+                                    <tr><td colSpan="6" className="p-4 text-center text-gray-500">Data Kosong</td></tr> : 
+                                    filteredLogs.map(log => (
+                                    <tr key={log.id} className="hover:bg-gray-50">
+                                        <td className="p-3">
+                                            <div className="font-bold">{formatDate(log.date)}</div>
+                                            <div className="text-gray-500">{formatTime(log.timestamp)}</div>
+                                        </td>
+                                        <td className="p-3">{log.employeeName}</td>
+                                        <td className="p-3">
+                                            <span className={`px-2 py-1 rounded text-xs font-bold ${log.type === 'IN' ? 'bg-emerald-100 text-emerald-800' : 'bg-rose-100 text-rose-800'}`}>
+                                                {log.type === 'IN' ? 'MASUK' : 'PULANG'}
+                                            </span>
+                                        </td>
+                                        <td className="p-3"><div className="font-medium">{log.status}</div></td>
+                                        <td className="p-3 text-right font-mono">
+                                            {log.penalty > 0 && <span className="text-red-600">-{formatCurrency(log.penalty)}</span>}
+                                            {log.bonus > 0 && <span className="text-green-600">+{formatCurrency(log.bonus)}</span>}
+                                        </td>
+                                        <td className="p-3 text-center">
+                                            <button 
+                                                onClick={() => handleDeleteLog(log.id)}
+                                                className="p-2 bg-red-50 text-red-600 rounded hover:bg-red-100 transition"
+                                                title="Hapus Log Ini"
+                                            >
+                                                <IconTrash2 className="w-4 h-4" />
+                                            </button>
+                                        </td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            );
         }
-        function toggleResetModal(show) { const modal = document.getElementById('reset-modal'); modal.classList.toggle('hidden', !show); if (show) { document.getElementById('reset-confirm-input').value = ''; document.getElementById('reset-confirm-input').focus(); } lucide.createIcons(); }
-        async function executeFullReset() {
-            const input = document.getElementById('reset-confirm-input').value.trim().toLowerCase();
-            if (input !== 'reset') return showMessage("Gagal", "Ketik kata 'reset' untuk konfirmasi.");
-            toggleLoader(true, "Mereset data...");
-            const { error } = await supabaseClient.from('shipments').delete().filter('id', 'neq', '00000000-0000-0000-0000-000000000000');
-            toggleLoader(false);
-            if (error) showMessage("Kesalahan", error.message, "error");
-            else { toggleResetModal(false); await loadData(); showMessage("Berhasil", "Bank data dikosongkan."); }
+
+        function GlobalSettings({ settings, setSettings }) {
+            const [localSettings, setLocalSettings] = useState(settings);
+            const handleSave = () => { setSettings(localSettings); alert('Disimpan!'); };
+
+            return (
+                <div className="space-y-6">
+                    <div className="bg-orange-50 p-4 rounded-lg border border-orange-200"><h4 className="font-bold text-orange-800 mb-2 flex items-center gap-2"><IconAlertTriangle className="w-4 h-4"/> Area Sensitif</h4><p className="text-sm text-orange-700">Hati-hati mengubah koordinat.</p></div>
+                    <div className="grid md:grid-cols-2 gap-4"><div><label className="block text-sm font-medium mb-1">Lat</label><input type="number" step="any" className="w-full border p-2 rounded" value={localSettings.lat} onChange={(e) => setLocalSettings({...localSettings, lat: parseFloat(e.target.value)})} /></div><div><label className="block text-sm font-medium mb-1">Lng</label><input type="number" step="any" className="w-full border p-2 rounded" value={localSettings.lng} onChange={(e) => setLocalSettings({...localSettings, lng: parseFloat(e.target.value)})} /></div></div>
+                    <div className="grid md:grid-cols-2 gap-4"><div><label className="block text-sm font-medium mb-1">Radius (m)</label><input type="number" className="w-full border p-2 rounded" value={localSettings.radius} onChange={(e) => setLocalSettings({...localSettings, radius: parseInt(e.target.value)})} /></div><div><label className="block text-sm font-medium mb-1">PIN Admin</label><input type="text" maxLength={6} className="w-full border p-2 rounded" value={localSettings.adminPin} onChange={(e) => setLocalSettings({...localSettings, adminPin: e.target.value})} /></div></div>
+                    <button onClick={handleSave} className="bg-blue-600 text-white px-6 py-3 rounded-lg font-bold hover:bg-blue-700 w-full md:w-auto">Simpan</button>
+                </div>
+            );
         }
-        async function handleLogin() {
-            const email = document.getElementById('login-email').value;
-            const password = document.getElementById('login-password').value;
-            if(!email || !password) return showMessage("Peringatan", "Isi email dan password.");
-            toggleLoader(true, "Autentikasi...");
-            const { data, error } = await supabaseClient.auth.signInWithPassword({ email, password });
-            toggleLoader(false);
-            if (error) showMessage("Login Gagal", error.message, "error"); else { state.user = data.user; showView('dashboard'); }
-        }
-        async function handleLogout() { await supabaseClient.auth.signOut(); state.user = null; state.showCommission = false; showView('login'); }
-        function togglePinModal(show) { document.getElementById('pin-modal').classList.toggle('hidden', !show); if(show) document.getElementById('pin-input').focus(); }
-        function verifyOwnerPin() { if (document.getElementById('pin-input').value === OWNER_PIN) { state.showCommission = true; togglePinModal(false); showView(state.view); } else { showMessage("Gagal", "PIN salah.", "error"); document.getElementById('pin-input').value = ''; } }
-        function toggleCommission(show) { state.showCommission = show; showView(state.view); }
-        function updateDateRange(key, val) { state.dateRange[key] = val; showView(state.view); }
-        async function addExpedition() {
-            const name = document.getElementById('set-name').value.toLowerCase().trim();
-            const rate = document.getElementById('set-rate').value;
-            if(!name || !rate) return showMessage("Peringatan", "Harap isi semua kolom!");
-            toggleLoader(true, "Menyimpan...");
-            const { error } = await supabaseClient.from('settings').insert([{ name, rate: Number(rate) }]);
-            toggleLoader(false);
-            if(error) showMessage("Kesalahan", error.message, "error");
-            else { await loadData(); showMessage("Berhasil", `Ekspedisi ${name.toUpperCase()} ditambahkan.`); }
-        }
-        function toggleLoader(show, text = "") { document.getElementById('loader-text').innerText = text; document.getElementById('global-loader').classList.toggle('hidden', !show); }
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
     </script>
 </body>
 </html>
